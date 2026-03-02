@@ -1,0 +1,7 @@
+{
+  "name": "NutriPixel",
+  "description": "A Google Pixel-styled Android-like app for tracking dietary supplements, featuring AI-powered label analysis, schedule management, and health insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
