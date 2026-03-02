@@ -1,10 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is missing. AI features will not work.");
+      throw new Error("API Key em falta. Configure a GEMINI_API_KEY nas definições do Netlify.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 
 export async function analyzeLabel(imageBase64: string) {
   try {
-    const response = await ai.models.generateContent({
+    const client = getAI();
+    const response = await client.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
         {
@@ -40,8 +53,9 @@ export async function analyzeLabel(imageBase64: string) {
 
 export async function findProductImage(productName: string, category: string) {
   try {
+    const client = getAI();
     // Use Google Search to find a real image of the product
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Encontra o URL de uma imagem real e de alta qualidade do produto: "${productName}" (${category}). 
       A imagem deve ser do rótulo ou embalagem.
@@ -74,6 +88,7 @@ export async function findProductImage(productName: string, category: string) {
 
 export async function analyzeStack(supplements: any[]) {
   try {
+    const client = getAI();
     const supplementList = supplements.map(s => 
       `- ${s.name} (${s.category}): ${s.ingredients}. 
        Dose: ${s.dosagePerServing} unidades.
@@ -81,7 +96,7 @@ export async function analyzeStack(supplements: any[]) {
        Total semanal: ${s.dosagePerServing * s.schedule.length} unidades.`
     ).join('\n');
 
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analisa esta lista de suplementos que estou a tomar:
       ${supplementList}
