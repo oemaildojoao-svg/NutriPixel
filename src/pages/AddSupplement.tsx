@@ -192,14 +192,59 @@ export default function AddSupplement() {
     toast.error('Erro ao aceder à câmara');
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper to resize image
+  const resizeImage = (base64Str: string, maxWidth = 1024, maxHeight = 1024): Promise<string> => {
+    return new Promise((resolve) => {
+      let img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        let canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        let ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => {
+        resolve(base64Str); // Return original if fail
+      };
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsAnalyzing(true);
+      toast.info('A processar imagem...');
+      
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const result = reader.result as string;
-        setCapturedImage(result);
-        analyzeImage(result);
+        
+        try {
+          // Compress image before sending to AI to avoid memory crashes
+          const resized = await resizeImage(result);
+          setCapturedImage(resized);
+          analyzeImage(resized);
+        } catch (err) {
+          console.error("Error processing image:", err);
+          setCapturedImage(result);
+          analyzeImage(result);
+        }
       };
       reader.readAsDataURL(file);
     }
