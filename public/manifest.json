@@ -1,0 +1,21 @@
+{
+  "name": "NutriPixel",
+  "short_name": "NutriPixel",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8b5cf6",
+  "description": "Registo de suplementos alimentares com IA",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "permissions": {
+    "video-capture": {
+      "description": "Required to scan supplement labels"
+    }
+  }
+}

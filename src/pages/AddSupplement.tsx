@@ -87,8 +87,10 @@ export default function AddSupplement() {
       
       toast.success('Rótulo analisado com sucesso!');
       setStep('form');
-    } catch (error) {
-      toast.error('Não foi possível analisar o rótulo. Tente manualmente.');
+    } catch (error: any) {
+      console.error("Full error object:", error);
+      const errorMessage = error?.message || 'Erro desconhecido';
+      toast.error(`Erro na análise: ${errorMessage}`);
       setStep('form');
     } finally {
       setIsAnalyzing(false);
@@ -163,7 +165,26 @@ export default function AddSupplement() {
   };
 
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const requestCameraPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      setPermissionDenied(false);
+      setCameraError(null);
+    } catch (err) {
+      console.error('Permission denied:', err);
+      setPermissionDenied(true);
+      setCameraError('Permissão de câmara negada. Por favor, autorize o acesso nas definições do seu navegador ou dispositivo.');
+    }
+  };
+
+  useEffect(() => {
+    if (step === 'camera') {
+      requestCameraPermission();
+    }
+  }, [step]);
 
   const handleCameraError = useCallback((error: string | DOMException) => {
     console.error('Camera error:', error);
@@ -211,9 +232,19 @@ export default function AddSupplement() {
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 text-center bg-stone-900">
                 <Camera size={48} className="text-stone-600 mb-4" />
                 <p className="mb-4">{cameraError}</p>
+                
+                {permissionDenied && (
+                  <button 
+                    onClick={requestCameraPermission}
+                    className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold mb-4"
+                  >
+                    Tentar Novamente
+                  </button>
+                )}
+
                 <button 
                   onClick={triggerFileUpload}
-                  className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold"
+                  className="bg-stone-700 text-white px-6 py-3 rounded-xl font-bold"
                 >
                   Carregar Foto / Tirar Foto
                 </button>

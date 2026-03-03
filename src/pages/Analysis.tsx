@@ -5,6 +5,8 @@ import { motion } from 'motion/react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+import { toast } from 'sonner';
+
 export default function Analysis() {
   const { supplements } = useSupplements();
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -23,8 +25,10 @@ export default function Analysis() {
       const result = await analyzeStack(supplements);
       setAnalysis(result);
       localStorage.setItem('nutripixel_analysis', result);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const errorMessage = error?.message || 'Erro desconhecido';
+      toast.error(`Erro ao gerar relatório: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
