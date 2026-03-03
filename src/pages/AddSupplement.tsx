@@ -162,6 +162,32 @@ export default function AddSupplement() {
     navigate('/inventory');
   };
 
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCameraError = useCallback((error: string | DOMException) => {
+    console.error('Camera error:', error);
+    setCameraError('Não foi possível aceder à câmara. Verifique as permissões ou use o botão de upload.');
+    toast.error('Erro ao aceder à câmara');
+  }, []);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setCapturedImage(result);
+        analyzeImage(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   if (step === 'camera') {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center relative bg-black rounded-3xl overflow-hidden mt-4">
@@ -172,32 +198,73 @@ export default function AddSupplement() {
           </div>
         ) : (
           <>
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="absolute inset-0 w-full h-full object-cover"
-              videoConstraints={{ facingMode: 'environment' }}
-            />
+            {!cameraError ? (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                className="absolute inset-0 w-full h-full object-cover"
+                videoConstraints={{ facingMode: 'environment' }}
+                onUserMediaError={handleCameraError}
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 text-center bg-stone-900">
+                <Camera size={48} className="text-stone-600 mb-4" />
+                <p className="mb-4">{cameraError}</p>
+                <button 
+                  onClick={triggerFileUpload}
+                  className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold"
+                >
+                  Carregar Foto / Tirar Foto
+                </button>
+              </div>
+            )}
+            
             <div className="absolute top-4 left-4 z-10">
                <button onClick={() => navigate(-1)} className="p-2 bg-black/40 rounded-full text-white backdrop-blur-md">
                  <ArrowLeft />
                </button>
             </div>
-            <div className="absolute bottom-8 flex flex-col items-center gap-4 w-full px-6">
-              <button
-                onClick={capture}
-                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-white/20 backdrop-blur-sm active:scale-95 transition-transform"
-              >
-                <div className="w-16 h-16 bg-white rounded-full" />
-              </button>
-              <button 
-                onClick={handleManualEntry}
-                className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full backdrop-blur-md"
-              >
-                Introduzir manualmente
-              </button>
-            </div>
+
+            {!cameraError && (
+              <div className="absolute bottom-8 flex flex-col items-center gap-4 w-full px-6">
+                <div className="flex items-center gap-6">
+                  <button 
+                    onClick={triggerFileUpload}
+                    className="p-4 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-colors"
+                    title="Carregar imagem"
+                  >
+                    <Upload size={24} />
+                  </button>
+                  
+                  <button
+                    onClick={capture}
+                    className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center bg-white/20 backdrop-blur-sm active:scale-95 transition-transform"
+                  >
+                    <div className="w-16 h-16 bg-white rounded-full" />
+                  </button>
+
+                  <div className="w-14" /> {/* Spacer to balance layout */}
+                </div>
+                
+                <button 
+                  onClick={handleManualEntry}
+                  className="text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full backdrop-blur-md"
+                >
+                  Introduzir manualmente
+                </button>
+              </div>
+            )}
+            
+            {/* Hidden file input for fallback */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              accept="image/*" 
+              capture="environment"
+              className="hidden" 
+            />
           </>
         )}
       </div>

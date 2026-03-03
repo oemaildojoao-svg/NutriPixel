@@ -4,10 +4,10 @@ let ai: GoogleGenAI | null = null;
 
 function getAI() {
   if (!ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("GEMINI_API_KEY is missing. AI features will not work.");
-      throw new Error("API Key em falta. Configure a GEMINI_API_KEY nas definições do Netlify.");
+      console.error("VITE_GEMINI_API_KEY is missing. AI features will not work.");
+      throw new Error("API Key em falta. Configure a VITE_GEMINI_API_KEY nas definições do Netlify.");
     }
     ai = new GoogleGenAI({ apiKey });
   }
