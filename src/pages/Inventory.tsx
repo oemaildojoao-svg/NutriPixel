@@ -1,9 +1,44 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useSupplements } from '@/context/SupplementContext';
-import { motion } from 'motion/react';
-import { Search, Filter, Edit2, Trash2, Plus, ImagePlus } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Search, Filter, Edit2, Trash2, Plus, ImagePlus, X, Check as CheckIcon } from 'lucide-react';
 import { CATEGORIES, Category } from '@/types';
 import { Link } from 'react-router-dom';
+import Cropper from 'react-easy-crop';
+
+// Helper to get cropped image
+const createImage = (url: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.src = url;
+  });
+
+async function getCroppedImg(imageSrc: string, pixelCrop: any) {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) return null;
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
 
 export default function Inventory() {
   const { supplements, deleteSupplement, updateSupplement } = useSupplements();
@@ -11,6 +46,12 @@ export default function Inventory() {
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  
+  // Cropper state
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const filtered = supplements.filter(s => {
     const matchesCategory = filter === 'All' || s.category === filter;
@@ -57,19 +98,43 @@ export default function Inventory() {
       reader.onloadend = async () => {
         const result = reader.result as string;
         try {
-          const resized = await resizeImage(result);
-          updateSupplement(editingImageId, { generatedImage: resized });
+          // Resize first to avoid massive images in cropper
+          const resized = await resizeImage(result, 1200, 1200);
+          setCropImageSrc(resized);
         } catch (err) {
           console.error("Error processing image:", err);
-          updateSupplement(editingImageId, { generatedImage: result });
+          setCropImageSrc(result);
         }
-        setEditingImageId(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleSaveCrop = async () => {
+    if (cropImageSrc && croppedAreaPixels && editingImageId) {
+      try {
+        const croppedImage = await getCroppedImg(cropImageSrc, croppedAreaPixels);
+        if (croppedImage) {
+          updateSupplement(editingImageId, { generatedImage: croppedImage });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setCropImageSrc(null);
+    setEditingImageId(null);
+  };
+
+  const handleCancelCrop = () => {
+    setCropImageSrc(null);
+    setEditingImageId(null);
   };
 
   const triggerImageUpload = (id: string) => {
@@ -201,6 +266,54 @@ export default function Inventory() {
           </div>
         )}
       </div>
+
+      {/* Cropper Modal */}
+      <AnimatePresence>
+        {cropImageSrc && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col bg-black"
+          >
+            <div className="flex justify-between items-center p-4 bg-black/50 text-white absolute top-0 left-0 right-0 z-10">
+              <button onClick={handleCancelCrop} className="p-2 bg-stone-800 rounded-full">
+                <X size={24} />
+              </button>
+              <h3 className="font-bold">Ajustar Imagem</h3>
+              <button onClick={handleSaveCrop} className="p-2 bg-emerald-500 rounded-full text-white">
+                <CheckIcon size={24} />
+              </button>
+            </div>
+            
+            <div className="relative flex-1 w-full h-full">
+              <Cropper
+                image={cropImageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+                objectFit="contain"
+              />
+            </div>
+            
+            <div className="p-6 bg-black/80 absolute bottom-0 left-0 right-0 z-10">
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                aria-labelledby="Zoom"
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-violet-500"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSupplements } from '@/context/SupplementContext';
 import { motion } from 'motion/react';
 import { Check, AlertTriangle, Droplets, Clock } from 'lucide-react';
@@ -7,7 +7,13 @@ import { pt } from 'date-fns/locale';
 
 export default function Dashboard() {
   const { supplements, takeDose, monthlyCost } = useSupplements();
+  const [takenIds, setTakenIds] = useState<Set<string>>(new Set());
   const today = new Date().getDay(); // 0-6
+
+  const handleTakeDose = (id: string) => {
+    takeDose(id);
+    setTakenIds(prev => new Set(prev).add(id));
+  };
 
   // Filter supplements for today and sort by time
   const todaysSupplements = supplements
@@ -109,8 +115,13 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <button
-                  onClick={() => takeDose(s.id)}
-                  className="w-10 h-10 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center hover:bg-violet-500 hover:text-white transition-colors active:scale-90"
+                  onClick={() => handleTakeDose(s.id)}
+                  disabled={takenIds.has(s.id)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-90 ${
+                    takenIds.has(s.id)
+                      ? 'bg-emerald-100 text-emerald-600'
+                      : 'bg-violet-50 text-violet-600 hover:bg-violet-500 hover:text-white'
+                  }`}
                 >
                   <Check size={20} strokeWidth={3} />
                 </button>
